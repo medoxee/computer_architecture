@@ -7,6 +7,8 @@
 #define SUB 0x02
 #define COMP 0x03
 #define MUL 0x04
+#define AND 0x06
+#define OR 0x07
 #define STR 0x0a
 #define A_ADDR 0xff
 #define B_ADDR 0xfe
@@ -40,6 +42,7 @@ struct	cpu{
 
 void	alu(uint8_t	*acc, uint8_t	opcode, uint8_t	r0, uint8_t	r1)
 {
+	uint8_t	r_shifts;	// used in while loops
 	// printf("i am in alu\n");
 	// ADD operation
 	if (opcode == ADD)
@@ -62,7 +65,7 @@ void	alu(uint8_t	*acc, uint8_t	opcode, uint8_t	r0, uint8_t	r1)
 		 * else if LSB of shifted r1 == 0; 0 will not affect the addition
 		 */
 		*acc = 0x00;
-		uint8_t	r_shifts = 0;
+		r_shifts = 0;
 		while (r_shifts < BITS)
 		{
 			if ((r1 >> r_shifts) & 0x01)
@@ -70,15 +73,10 @@ void	alu(uint8_t	*acc, uint8_t	opcode, uint8_t	r0, uint8_t	r1)
 			r_shifts++;
 		}
 	}
-	else if (opcode == COMP)
-	{
-		/*
-		 * NOT YET :/
-		*acc = r0;
-		*acc ^= r1; // xor
-		*acc = !(*acc); // xnor
-		*/
-	}
+	else if (opcode == AND)
+		*acc = r0 & r1;
+	else if (opcode == OR)
+		*acc = r0 | r1;
 }
 
 void	decode(int	*ir, uint8_t	*opcode, int	*r2, int	*r3)
@@ -152,9 +150,9 @@ int	main(void)
 	 * 	Do not touche anything else or it will break!
 	 */
 	// start of user input
-	int	A = 25;
-	int	B = 2;
-	int	operation = MUL;
+	int	A = 1;
+	int	B = 1;
+	int	operation = OR;
 	// end of user input
 	cpu_1.ram[0x00] = (operation << 24) +((int)A_ADDR << 12) + (int)B_ADDR;
 	cpu_1.ram[A_ADDR] = A;
