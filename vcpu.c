@@ -12,7 +12,7 @@
 #define MUL 0b11
 #define R0 0b00
 #define R1 0b01
-#define R2 0b10
+#define RX_0 0b10
 #define A_ADDR 0xf
 #define B_ADDR 0xe
 #define RESULT_ADDR 0xd
@@ -50,7 +50,16 @@ struct	cpu{
 void	alu(uint8_t	*acc, uint8_t	operation, uint8_t	r0,
 		uint8_t	r1)
 {
+	/*
+	 * How MUL operation works?
+	 * initilze acc to 0x00
+	 * r_shift: n times to shift r1
+	 * loop until all bits of r1 multiplied by r0
+	 * if LSB of shifted r1 == 1; result of mult is r0 (shifted by r_shift)
+	 * else if LSB of shifted r1 == 0; 0 will not affect the addition.
+	 */
 	uint8_t	r_shifts;	// used in while loops
+	
 	/*
 	printf("A = %d\nB = %d\nOP = %.2b\n", r0, r1, operation);
 	*/
@@ -65,15 +74,6 @@ void	alu(uint8_t	*acc, uint8_t	operation, uint8_t	r0,
 	}
 	else if (operation == MUL)
 	{
-		/*
-		 * initilze acc to 0x00
-		 * r_shift: n times to shift r1
-		 * loop until all bits of r1 multiplied by r0
-		 * if LSB of shifted r1 == 1; result of mult is r0
-		 * (shifted by r_shift)
-		 * else if LSB of shifted r1 == 0; 0 will not affect the
-		 * addition
-		 */
 		*acc = 0x00;
 		r_shifts = 0;
 		while (r_shifts < BITS)
@@ -83,12 +83,6 @@ void	alu(uint8_t	*acc, uint8_t	operation, uint8_t	r0,
 			r_shifts++;
 		}
 	}
-	/*
-	else if (operation == AND)
-		*acc = r0 & r1;
-	else if (operation == OR)
-		*acc = r0 | r1;
-	*/
 	cpu_0.rx[0] = *acc;
 }
 
@@ -107,12 +101,10 @@ void	decode(uint8_t	*ir, uint8_t	*opcode, uint8_t	*r0,
 	}
 	else
 	{
-		*opcode = *ir >> 4;
 		*r0 = (*ir & 0x0b) >> 2;
 		*r1 = *ir & 0x03;
 		cpu_0.alu_enable = 1;
 	}
-	*ir = 0;			// free ir
 }
 
 void	fetch(uint8_t	src_addr, uint8_t	*ir)
@@ -122,9 +114,10 @@ void	fetch(uint8_t	src_addr, uint8_t	*ir)
 
 void	control_unit(void)
 {
-	uint8_t	opcode;	// operation code (add, sub, ...)
+	uint8_t	opcode;		// operation code (add, sub, ...)
 	uint8_t	r0;
-	uint8_t	r1;	// r0, r1 : registers of addr A, B
+	uint8_t	r1;		// r0, r1 : registers of addr A, B
+	uint8_t alu_operation;
 	
 	cpu_0.pc = 0x0;	// addr of 1st instruction in ram
 	while (cpu_0.pc <= 0x3)
@@ -149,7 +142,8 @@ void	control_unit(void)
 		}
 		else if (cpu_0.alu_enable)
 		{
-			alu(&cpu_0.acc, opcode, cpu_0.rx[0], cpu_0.rx[1]);
+			alu_operation = (cpu_0.ir >> 4) & 0x03;
+			alu(&cpu_0.acc, alu_operation, cpu_0.rx[0], cpu_0.rx[1]);
 			cpu_0.alu_enable = 0;
 		}
 		cpu_0.pc++;
@@ -160,7 +154,7 @@ int	main(void)
 {
 	/*
 	 * Input can be set below,
-	 * Prevent overflow
+	 * Avoid overflow!
 	 * Notices:
 	 * 	For substraction, A MUST be >= B
 	 * 	Addition	: operation = ADD
@@ -170,7 +164,7 @@ int	main(void)
 	uint8_t	result;	// final result of cpu	
 	// start of user input
 	uint8_t	A = 10;
-	uint8_t	B = 5;
+	uint8_t	B = 7;
 	uint8_t	operation = SUB;
 
 	// end of user input
@@ -190,7 +184,7 @@ int	main(void)
 	cpu_0.ram[0x2] = ((uint8_t)operation << 4) + ((uint8_t)R0 << 2) +
 		((uint8_t)R1);
 
-	cpu_0.ram[0x3] = ((uint8_t)STORE  << 6) +  ((uint8_t)R2 << 4) +
+	cpu_0.ram[0x3] = ((uint8_t)STORE  << 6) +  ((uint8_t)RX_0 << 4) +
 		((uint8_t)RESULT_ADDR);
 	cpu_0.read_enable = 0;
 	cpu_0.write_enable = 0;
